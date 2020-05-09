@@ -1,5 +1,5 @@
 import 'package:whereyouatfriend/models/citizen.dart';
-import 'package:whereyouatfriend/repositories/base_citizens_repo.dart';
+import 'package:whereyouatfriend/repositories/base/base_citizens_repo.dart';
 import 'package:whereyouatfriend/services/citizen_service.dart';
 
 class CitizenRepo implements BaseCitizenRepo {
