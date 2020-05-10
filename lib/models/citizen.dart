@@ -26,6 +26,10 @@ class Citizen {
         'isLocationFromApi': isLocationFromApi
       };
 
+  Map<String, dynamic> toJson() => toMap();
+
+  factory Citizen.fromJson(Map<String, dynamic> map) => Citizen.fromMap(map);
+
   Citizen merge(Citizen other) {
     this.id = other.id ?? this.id;
     this.userGuid = other.userGuid ?? this.userGuid;
