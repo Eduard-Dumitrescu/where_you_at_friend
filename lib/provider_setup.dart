@@ -5,10 +5,12 @@ import 'package:whereyouatfriend/DeviceCache/SharedPreferences/shared_preference
 import 'package:whereyouatfriend/models/auth_state.dart';
 import 'package:whereyouatfriend/repositories/citizens_repo.dart';
 import 'package:whereyouatfriend/services/citizen_service.dart';
+import 'package:whereyouatfriend/viewmodels/login_view_model.dart';
 
 List<SingleChildWidget> providers = [
   ...independentServices,
-  ...dependentServices
+  ...dependentServices,
+  ...viewModelProviders
 ];
 
 List<SingleChildWidget> independentServices = [
@@ -26,5 +28,12 @@ List<SingleChildWidget> dependentServices = [
   ProxyProvider2<CitizenService, AuthState, CitizenRepo>(
     update: (context, citizenService, authState, citizenRepo) =>
         CitizenRepo(citizenService, authState),
+  ),
+];
+
+List<SingleChildWidget> viewModelProviders = [
+  ProxyProvider<CitizenRepo, LoginViewModel>(
+    update: (context, citizenRepo, loginViewModel) =>
+        LoginViewModel(citizenRepo),
   ),
 ];

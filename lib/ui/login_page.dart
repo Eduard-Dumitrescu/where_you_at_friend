@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
-import 'package:whereyouatfriend/repositories/citizens_repo.dart';
-import 'package:whereyouatfriend/utils/string_utils.dart';
+import 'package:whereyouatfriend/viewmodels/login_view_model.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage();
@@ -12,19 +10,37 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _postalCodeController =
-      new TextEditingController();
-
-  final TextEditingController _cityController = new TextEditingController();
-
-  final ValueNotifier<String> _locationErrorMessage = ValueNotifier<String>("");
-
-  final ValueNotifier<bool> _isValidLocation = ValueNotifier<bool>(false);
+  LoginViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = Provider.of<LoginViewModel>(context, listen: false);
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView(
+      onPageChanged: (index) async => _viewModel.pageChanged(),
+      children: <Widget>[
+        CreateAccountFromInputWidget(_viewModel),
+        CreateAccountFromGeolocatorWidget(_viewModel)
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _viewModel.cleanup();
+  }
+}
+
+class CreateAccountFromInputWidget extends StatelessWidget {
+  final LoginViewModel _loginViewModel;
+
+  const CreateAccountFromInputWidget(this._loginViewModel, {Key key})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -47,13 +63,9 @@ class _LoginPageState extends State<LoginPage> {
       children: <Widget>[
         Flexible(
           child: TextFormField(
-            onChanged: (value) async {
-              if (_isValidLocation.value) {
-                _isValidLocation.value = false;
-              }
-            },
+            onChanged: (value) async => _loginViewModel.invalidateLocation(),
             textAlign: TextAlign.center,
-            controller: _postalCodeController,
+            controller: _loginViewModel.postalCodeController,
             style: TextStyle(color: Colors.yellow, fontSize: 16),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.all(8.0),
@@ -71,13 +83,9 @@ class _LoginPageState extends State<LoginPage> {
         ),
         Flexible(
           child: TextFormField(
-            onChanged: (value) async {
-              if (_isValidLocation.value) {
-                _isValidLocation.value = false;
-              }
-            },
+            onChanged: (value) async => _loginViewModel.invalidateLocation(),
             textAlign: TextAlign.center,
-            controller: _cityController,
+            controller: _loginViewModel.cityController,
             style: TextStyle(color: Colors.yellow, fontSize: 16),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.all(8.0),
@@ -94,8 +102,66 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
         Flexible(
+          child: LocationSuccessErrorWidget(_loginViewModel),
+        ),
+        Flexible(
+          child: Row(
+            children: <Widget>[
+              RaisedButton(
+                onPressed: () async => _loginViewModel.verifyAddress(),
+                child: Text("Verify Address"),
+              ),
+              CreateAccountButtonWidget(_loginViewModel),
+            ],
+          ),
+        )
+      ],
+    );
+  }
+}
+
+class CreateAccountFromGeolocatorWidget extends StatelessWidget {
+  final LoginViewModel _loginViewModel;
+
+  const CreateAccountFromGeolocatorWidget(this._loginViewModel, {Key key})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        Flexible(
+          child: RaisedButton(
+            onPressed: () async => _loginViewModel.getCurrentLocation(),
+            child: Text("Get current location"),
+          ),
+        ),
+        Flexible(
+          child: LocationSuccessErrorWidget(_loginViewModel),
+        ),
+        Flexible(
+          child: CreateAccountButtonWidget(_loginViewModel),
+        ),
+      ],
+    );
+  }
+}
+
+class LocationSuccessErrorWidget extends StatelessWidget {
+  final LoginViewModel _loginViewModel;
+
+  const LocationSuccessErrorWidget(this._loginViewModel, {Key key})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Flexible(
           child: ValueListenableBuilder<String>(
-              valueListenable: _locationErrorMessage,
+              valueListenable: _loginViewModel.locationErrorMessage,
               builder: (context, errorString, _) {
                 return errorString.isEmpty
                     ? Container()
@@ -114,13 +180,13 @@ class _LoginPageState extends State<LoginPage> {
         ),
         Flexible(
           child: ValueListenableBuilder<bool>(
-              valueListenable: _isValidLocation,
+              valueListenable: _loginViewModel.isValidLocation,
               builder: (context, isLocationValid, _) {
                 return !isLocationValid
                     ? Container()
                     : Center(
                         child: Text(
-                          " Found valid postal code ${_postalCodeController.text} with city ${_cityController.text}, if correct press create account",
+                          " Found valid postal code ${_loginViewModel.postalCodeController.text} with city ${_loginViewModel.cityController.text}, if correct press create account",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.blue,
@@ -131,86 +197,28 @@ class _LoginPageState extends State<LoginPage> {
                       );
               }),
         ),
-        Flexible(
-          child: Row(
-            children: <Widget>[
-              RaisedButton(
-                onPressed: () async {
-                  String validatorResult = await _locationValidator(
-                      _postalCodeController.text, _cityController.text);
-                  if (validatorResult == null) {
-                    _locationErrorMessage.value = "";
-                  } else {
-                    _locationErrorMessage.value = validatorResult;
-                  }
-                },
-                child: Text("Verify Address"),
-              ),
-              ValueListenableBuilder<bool>(
-                  valueListenable: _isValidLocation,
-                  builder: (context, isValidLocation, _) {
-                    return RaisedButton(
-                      onPressed: !isValidLocation
-                          ? null
-                          : () async {
-                              Provider.of<CitizenRepo>(context, listen: false)
-                                  .createCitizen(_postalCodeController.text,
-                                      _cityController.text, false);
-                            },
-                      child: Text("Create Account"),
-                    );
-                  }),
-            ],
-          ),
-        )
       ],
     );
   }
+}
 
-  // TODO optimize call order more
-  Future<String> _locationValidator(String postalCode, String city) async {
-    if (StringUtils.isNullOrEmpty(postalCode) &&
-        StringUtils.isNullOrEmpty(city))
-      return "Please provide postal code and city";
+class CreateAccountButtonWidget extends StatelessWidget {
+  final LoginViewModel _loginViewModel;
 
-    if (StringUtils.isNullOrEmpty(postalCode))
-      return "Please provide postal code";
-
-    if (StringUtils.isNullOrEmpty(city)) return "Please provide city";
-
-    try {
-      List<Placemark> placemarks = await Geolocator()
-          .placemarkFromAddress(" PO $postalCode, $city, Romania ");
-
-      if (placemarks.isEmpty) return "Please enter a valid posta code and city";
-
-      if (placemarks[0].locality != city && placemarks[0].locality.isNotEmpty) {
-        city = placemarks[0].locality;
-        _cityController.text = city;
-      }
-
-      if (placemarks[0].postalCode.isEmpty ||
-          placemarks[0].postalCode != postalCode) {
-        placemarks = await Geolocator()
-            .placemarkFromAddress(" PO $postalCode, $city, Romania ");
-      }
-
-      if (placemarks.isEmpty ||
-          placemarks[0].postalCode != postalCode ||
-          placemarks[0].locality != city) return "No valid location found";
-
-      _cityController.text = city;
-      _isValidLocation.value = true;
-    } catch (error) {
-      return "No valid location found";
-    }
-    return null;
-  }
+  const CreateAccountButtonWidget(this._loginViewModel, {Key key})
+      : super(key: key);
 
   @override
-  void dispose() {
-    super.dispose();
-    _postalCodeController.dispose();
-    _cityController.dispose();
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+        valueListenable: _loginViewModel.isValidLocation,
+        builder: (context, isValidLocation, _) {
+          return RaisedButton(
+            onPressed: !isValidLocation
+                ? null
+                : () async => _loginViewModel.createAccount(),
+            child: Text("Create Account"),
+          );
+        });
   }
 }
