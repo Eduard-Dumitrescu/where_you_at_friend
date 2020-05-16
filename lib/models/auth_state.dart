@@ -7,9 +7,11 @@ enum ScreenState { Splash, Login, Main }
 class AuthState with ChangeNotifier {
   ScreenState state;
   SharedPreferenceRepo _sharedPreferenceRepo;
+  Citizen _currentCitizen;
 
   AuthState() {
     state = ScreenState.Splash;
+    _currentCitizen = null;
   }
 
   void setSharedPreferenceRepo(SharedPreferenceRepo sharedPreferenceRepo) {
@@ -19,8 +21,9 @@ class AuthState with ChangeNotifier {
     verifyStatus();
   }
 
-  void verifyStatus() {
-    _sharedPreferenceRepo.getCurrentCitizen().then((citizen) {
+  Future verifyStatus() async {
+    return _sharedPreferenceRepo.getCurrentCitizen().then((citizen) {
+      _currentCitizen = citizen;
       if (citizen == null && !isLoginScreen()) {
         setLoginScreen();
       } else if (citizen != null && !isMainScreen()) {
@@ -29,8 +32,10 @@ class AuthState with ChangeNotifier {
     });
   }
 
-  Future<Citizen> getCurrentCitizen() =>
-      _sharedPreferenceRepo.getCurrentCitizen();
+  Future<Citizen> getCurrentCitizen() async {
+    await verifyStatus();
+    return _currentCitizen;
+  }
 
   void setCitizen(Citizen citizen) {
     _sharedPreferenceRepo

@@ -11,13 +11,19 @@ class LoginViewModel {
   final ValueNotifier<String> locationErrorMessage;
   final ValueNotifier<bool> isValidLocation;
 
+  bool isFromGeolocator;
+
   final CitizenRepo _citizenRepo;
+
+  double latitude;
+  double longitude;
 
   LoginViewModel(this._citizenRepo)
       : postalCodeController = TextEditingController(),
         cityController = TextEditingController(),
         locationErrorMessage = ValueNotifier<String>(""),
-        isValidLocation = ValueNotifier<bool>(false);
+        isValidLocation = ValueNotifier<bool>(false),
+        isFromGeolocator = false;
 
   Future<void> verifyAddress() async {
     String validatorResult = await _locationValidator(
@@ -40,9 +46,14 @@ class LoginViewModel {
 
     if (StringUtils.isNullOrEmpty(city)) return "Please provide city";
 
+    postalCode = postalCode.trim();
+    city = city.trim();
+
     try {
-      List<Placemark> placemarks = await Geolocator()
-          .placemarkFromAddress(" PO $postalCode, $city, Romania ");
+      var address = "PO $postalCode, $city, Romania".trim();
+
+      List<Placemark> placemarks =
+          await Geolocator().placemarkFromAddress(address);
 
       if (placemarks.isEmpty) return "Please enter a valid posta code and city";
 
@@ -54,30 +65,27 @@ class LoginViewModel {
       if (placemarks[0].postalCode.isEmpty ||
           placemarks[0].postalCode != postalCode) {
         placemarks = await Geolocator()
-            .placemarkFromAddress(" PO $postalCode, $city, Romania ");
+            .placemarkFromAddress(" PO $postalCode, $city, Romania");
       }
 
       if (placemarks.isEmpty ||
           placemarks[0].postalCode != postalCode ||
           placemarks[0].locality != city) return "No valid location found";
 
+      postalCodeController.text = postalCode;
       cityController.text = city;
       isValidLocation.value = true;
+
+      latitude = placemarks[0].position.latitude;
+      longitude = placemarks[0].position.longitude;
     } catch (error) {
       return "No valid location found";
     }
     return null;
   }
 
-  createAccount() async {
-    String validatorResult = await _locationValidator(
-        postalCodeController.text, cityController.text);
-    if (validatorResult == null) {
-      locationErrorMessage.value = "";
-    } else {
-      locationErrorMessage.value = validatorResult;
-    }
-  }
+  createAccount() async => _citizenRepo.createCitizen(postalCodeController.text,
+      cityController.text, isFromGeolocator, latitude, longitude);
 
   //TODO treat all request cases
   Future getCurrentLocation() async {
@@ -88,21 +96,24 @@ class LoginViewModel {
     Position position = await Geolocator()
         .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
 
-    List<Placemark> placemark = await Geolocator()
+    List<Placemark> placemarks = await Geolocator()
         .placemarkFromCoordinates(position.latitude, position.longitude);
 
-    if (placemark.isEmpty ||
-        placemark[0].postalCode.isEmpty ||
-        placemark[0].locality.isEmpty) {
+    if (placemarks.isEmpty ||
+        placemarks[0].postalCode.isEmpty ||
+        placemarks[0].locality.isEmpty) {
       invalidateLocation();
       locationErrorMessage.value =
           "Location not found try moving somewhere else";
       return;
     }
 
-    postalCodeController.text = placemark[0].postalCode;
-    cityController.text = placemark[0].locality;
+    postalCodeController.text = placemarks[0].postalCode;
+    cityController.text = placemarks[0].locality;
     isValidLocation.value = true;
+    isFromGeolocator = true;
+    latitude = placemarks[0].position.latitude;
+    longitude = placemarks[0].position.longitude;
   }
 
   void invalidateLocation() => changeIsLocationValid(false);
@@ -116,6 +127,7 @@ class LoginViewModel {
   void pageChanged() {
     isValidLocation.value = false;
     locationErrorMessage.value = "";
+    isFromGeolocator = false;
   }
 
   void cleanup() {

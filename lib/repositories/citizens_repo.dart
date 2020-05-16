@@ -9,29 +9,21 @@ class CitizenRepo implements BaseCitizenRepo {
 
   CitizenRepo(this._citizenService, this._authState);
 
-  @override
-  Future<Iterable<Citizen>> getAllCitizensAsFuture() {
-    // TODO: implement getAllCitizensAsFuture
-    throw UnimplementedError();
-  }
-
-  @override
-  Stream<Iterable<Citizen>> getAllCitizensAsStream() {
-    // TODO: implement getAllCitizensAsStream
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<String> createCitizen(
-      String postalCode, String city, bool isLocationFromAPI) async {
+  Future<String> createCitizen(String postalCode, String city,
+      bool isLocationFromAPI, double latitude, double longitude) async {
     var citizen = await _citizenService.createCitizen(
         postalCode, city, isLocationFromAPI);
 
     if (citizen != null) {
+      citizen.latitude = latitude;
+      citizen.longitude = longitude;
+
       _authState.setCitizen(citizen);
       return "User Created";
     }
 
     return null;
   }
+
+  Future<Citizen> getCurrentCitizen() => _authState.getCurrentCitizen();
 }

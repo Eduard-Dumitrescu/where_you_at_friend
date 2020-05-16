@@ -12,11 +12,11 @@ dependencies:
   cloud_firestore: ^0.13.5
   google_maps_flutter: ^0.5.27+3
   geolocator: ^5.3.1
-  provider: ^4.1.1
+  provider: ^4.1.2
   shared_preferences: ^0.5.7+2
   dio: ^3.0.9
   flutter_spinkit: ^4.1.2+1
-  permission_handler: ^5.0.0+hotfix.5
+  permission_handler: ^5.0.0+hotfix.6
 
 dev_dependencies:
   flutter_test:
