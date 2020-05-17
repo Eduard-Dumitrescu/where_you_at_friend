@@ -36,4 +36,18 @@ class CitizenService {
       return null;
     }
   }
+
+  Future<bool> updateIsInsideStatus(String citizenGuid, bool isInside) async {
+    try {
+      _dio.options.headers["Userguid"] = citizenGuid;
+      var response =
+          await _dio.put("/general/updateIsInsideStatus", queryParameters: {
+        "IsInside": isInside,
+      });
+
+      return response.statusCode == 200;
+    } on DioError catch (e) {
+      return false;
+    }
+  }
 }

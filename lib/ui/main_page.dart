@@ -98,6 +98,15 @@ class ZoneDataWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           Flexible(
+            child: ValueListenableBuilder<bool>(
+              valueListenable: _mainViewModel.isInside,
+              builder: (context, isInside, _) => Switch(
+                value: isInside,
+                onChanged: (value) => _mainViewModel.updateIsInside(value),
+              ),
+            ),
+          ),
+          Flexible(
             child: RaisedButton(
               onPressed: () async => _mainViewModel.updateZoneData(),
               child: const Text("Refresh"),

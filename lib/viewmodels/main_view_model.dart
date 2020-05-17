@@ -25,7 +25,7 @@ class MainViewModel {
   String currentPostalCode;
   String currentCity;
 
-  ValueListenable<bool> lel;
+  final ValueNotifier<bool> isInside;
 
   MainViewModel(this._citizenRepo, this._zoneStatusRepo)
       : mapsController = Completer(),
@@ -33,6 +33,7 @@ class MainViewModel {
         citizensInside = ValueNotifier(0),
         citizensOutside = ValueNotifier(0),
         citizensTotal = ValueNotifier(0),
+        isInside = ValueNotifier(true),
         currentZoneData = ValueNotifier("") {
     _citizenRepo.getCurrentCitizen().then((value) {
       _currentCitizen = value;
@@ -40,6 +41,7 @@ class MainViewModel {
       currentCity = _currentCitizen.city;
       shownZone.value =
           "${_currentCitizen.postalCode}, ${_currentCitizen.city}";
+      isInside.value = _currentCitizen.isInside;
       updateZone();
     });
   }
@@ -95,5 +97,13 @@ class MainViewModel {
     citizensInside?.dispose();
     currentZoneData?.dispose();
     citizensTotal?.dispose();
+    isInside?.dispose();
+  }
+
+  Future updateIsInside(bool value) async {
+    var rez = await _citizenRepo.updateIsInsideStatus(value);
+    if (rez == "Status update complete") {
+      isInside.value = value;
+    }
   }
 }

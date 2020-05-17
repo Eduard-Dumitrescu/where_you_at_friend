@@ -25,5 +25,13 @@ class CitizenRepo implements BaseCitizenRepo {
     return null;
   }
 
+  Future<String> updateIsInsideStatus(bool isInside) async {
+    String citizenGuid = (await getCurrentCitizen()).userGuid;
+    bool hasUpdated =
+        await _citizenService.updateIsInsideStatus(citizenGuid, isInside);
+
+    return hasUpdated ? "Status update complete" : "Error";
+  }
+
   Future<Citizen> getCurrentCitizen() => _authState.getCurrentCitizen();
 }
