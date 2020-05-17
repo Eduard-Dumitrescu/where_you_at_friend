@@ -15,20 +15,32 @@ class MainViewModel {
   final Completer<GoogleMapController> mapsController;
   final ValueNotifier<String> shownZone;
 
+  final ValueNotifier<int> citizensOutside;
+  final ValueNotifier<int> citizensInside;
+  final ValueNotifier<int> citizensTotal;
+  final ValueNotifier<String> currentZoneData;
+
   Citizen _currentCitizen;
   CameraPosition currentCameraPosition;
-  String shownPostalCode;
+  String currentPostalCode;
+  String currentCity;
 
   ValueListenable<bool> lel;
 
   MainViewModel(this._citizenRepo, this._zoneStatusRepo)
       : mapsController = Completer(),
-        shownZone = ValueNotifier("") {
+        shownZone = ValueNotifier(""),
+        citizensInside = ValueNotifier(0),
+        citizensOutside = ValueNotifier(0),
+        citizensTotal = ValueNotifier(0),
+        currentZoneData = ValueNotifier("") {
     _citizenRepo.getCurrentCitizen().then((value) {
       _currentCitizen = value;
-      shownPostalCode = _currentCitizen.postalCode;
+      currentPostalCode = _currentCitizen.postalCode;
+      currentCity = _currentCitizen.city;
       shownZone.value =
           "${_currentCitizen.postalCode}, ${_currentCitizen.city}";
+      updateZone();
     });
   }
 
@@ -48,19 +60,40 @@ class MainViewModel {
     currentCameraPosition = cameraPosition;
   }
 
-  void updateZone() {
-    Geolocator()
-        .placemarkFromCoordinates(currentCameraPosition.target.latitude,
-            currentCameraPosition.target.longitude)
+  void updateZoneData() {
+    _zoneStatusRepo
+        .getZoneStatusCount(currentPostalCode, currentCity)
         .then((value) {
-      if (value.isNotEmpty) {
-        if (value[0].postalCode != shownPostalCode) {
-          shownPostalCode = value[0].postalCode;
-          shownZone.value = "${value[0].postalCode}, ${value[0].locality}";
-        }
+      if (value != null) {
+        citizensInside.value = value.isInsideCount;
+        citizensTotal.value = value.totalCount;
+        citizensOutside.value = value.totalCount - value.isInsideCount;
       }
     });
   }
 
-  void cleanup() {}
+  void updateZone() {
+    if (currentCameraPosition != null) {
+      Geolocator()
+          .placemarkFromCoordinates(currentCameraPosition.target.latitude,
+              currentCameraPosition.target.longitude)
+          .then((value) {
+        if (value.isNotEmpty) {
+          if (value[0].postalCode != currentPostalCode) {
+            currentPostalCode = value[0].postalCode;
+            currentCity = value[0].locality;
+            shownZone.value = "${value[0].postalCode}, ${value[0].locality}";
+          }
+        }
+      });
+    }
+  }
+
+  void cleanup() {
+    shownZone?.dispose();
+    citizensOutside?.dispose();
+    citizensInside?.dispose();
+    currentZoneData?.dispose();
+    citizensTotal?.dispose();
+  }
 }

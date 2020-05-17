@@ -2,22 +2,19 @@ import 'package:dio/dio.dart';
 import 'package:whereyouatfriend/models/citizen.dart';
 
 class CitizenService {
-  Dio dio;
+  final Dio _dio;
 
-  CitizenService() {
-    BaseOptions options = new BaseOptions(
-      baseUrl: "http://localhost:8080",
-      connectTimeout: 5000,
-      receiveTimeout: 3000,
-    );
-
-    dio = new Dio(options);
-  }
+  CitizenService()
+      : _dio = Dio(BaseOptions(
+          baseUrl: "http://localhost:8080",
+          connectTimeout: 5000,
+          receiveTimeout: 3000,
+        ));
 
   Future<Citizen> createCitizen(
       String postalCode, String city, bool isLocationFromApi) async {
     try {
-      var response = await dio.post("/createCitizen", data: {
+      var response = await _dio.post("/createCitizen", data: {
         "postalCode": postalCode,
         "city": city,
         "isLocationFromAPI": isLocationFromApi

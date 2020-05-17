@@ -22,48 +22,59 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Where you at buddy"),
-      ),
-      body: Container(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Flexible(
-              child: ValueListenableBuilder<String>(
-                valueListenable: _mainViewModel.shownZone,
-                builder: (context, zone, _) =>
-                    zone.isNotEmpty ? Text(zone) : Container(),
+      appBar: _appBar(),
+      body: _mainBody(),
+    );
+  }
+
+  Widget _appBar() {
+    return AppBar(
+      title: const Text("Where you at buddy"),
+    );
+  }
+
+  Widget _mainBody() {
+    return Container(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Flexible(
+            child: ValueListenableBuilder<String>(
+              valueListenable: _mainViewModel.shownZone,
+              builder: (context, zone, _) =>
+                  zone.isNotEmpty ? Text(zone) : Container(),
+            ),
+          ),
+          Flexible(
+            child: Center(
+              child: Container(
+                width: 300,
+                height: 300,
+                child: FutureBuilder<CameraPosition>(
+                    future: _mainViewModel.getCitizenPosition(),
+                    builder: (context, cameraPosition) {
+                      return cameraPosition.hasData
+                          ? GoogleMap(
+                              mapType: MapType.normal,
+                              initialCameraPosition: cameraPosition.data,
+                              onMapCreated: (GoogleMapController controller) {
+                                _mainViewModel.mapsController
+                                    .complete(controller);
+                              },
+                              onCameraMove: (cameraPosition) async =>
+                                  _mainViewModel.changeZone(cameraPosition),
+                              onCameraIdle: () => _mainViewModel.updateZone(),
+                            )
+                          : Container();
+                    }),
               ),
             ),
-            Flexible(
-              child: Center(
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  child: FutureBuilder<CameraPosition>(
-                      future: _mainViewModel.getCitizenPosition(),
-                      builder: (context, cameraPosition) {
-                        return cameraPosition.hasData
-                            ? GoogleMap(
-                                mapType: MapType.normal,
-                                initialCameraPosition: cameraPosition.data,
-                                onMapCreated: (GoogleMapController controller) {
-                                  _mainViewModel.mapsController
-                                      .complete(controller);
-                                },
-                                onCameraMove: (cameraPosition) async =>
-                                    _mainViewModel.changeZone(cameraPosition),
-                                onCameraIdle: () => _mainViewModel.updateZone(),
-                              )
-                            : Container();
-                      }),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+          Flexible(
+            child: ZoneDataWidget(_mainViewModel),
+          ),
+        ],
       ),
     );
   }
@@ -72,5 +83,88 @@ class _MainPageState extends State<MainPage> {
   void dispose() {
     super.dispose();
     _mainViewModel.cleanup();
+  }
+}
+
+class ZoneDataWidget extends StatelessWidget {
+  final MainViewModel _mainViewModel;
+  const ZoneDataWidget(this._mainViewModel, {Key key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Flexible(
+            child: RaisedButton(
+              onPressed: () async => _mainViewModel.updateZoneData(),
+              child: const Text("Refresh"),
+            ),
+          ),
+          Flexible(
+            child: ValueListenableBuilder<String>(
+              valueListenable: _mainViewModel.currentZoneData,
+              builder: (context, currentZoneData, _) =>
+                  currentZoneData.isNotEmpty
+                      ? Text(currentZoneData)
+                      : Container(),
+            ),
+          ),
+          Flexible(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Flexible(
+                        child: const Text("People outside:"),
+                      ),
+                      Flexible(
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _mainViewModel.citizensOutside,
+                          builder: (context, citizensOutside, _) =>
+                              Text(citizensOutside.toString()),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Flexible(
+                        child: const Text("People inside:"),
+                      ),
+                      Flexible(
+                        child: ValueListenableBuilder<int>(
+                          valueListenable: _mainViewModel.citizensInside,
+                          builder: (context, citizensInside, _) =>
+                              Text(citizensInside.toString()),
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            child: ValueListenableBuilder<int>(
+              valueListenable: _mainViewModel.citizensTotal,
+              builder: (context, citizensTotal, _) => Text(
+                  "Total registered citizens : ${citizensTotal.toString()}"),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
